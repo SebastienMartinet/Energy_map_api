@@ -391,9 +391,8 @@ def dashboard_finance():
 
 from PIL import Image
 # Load image
-image = Image.open("assets/avatar_open_to_work.png")  # local file or you can use a URL with requests
 # Display in sidebar
-st.sidebar.image(image, caption="Sébastien MARTINET", use_container_width=True)
+st.sidebar.image("assets/avatar_open_to_work.png", caption="Sébastien MARTINET", use_container_width=True)
 
 choice = st.sidebar.selectbox("Select Dashboard", ["Italian Energy Production", "Finance forecast"], index=0)
 
