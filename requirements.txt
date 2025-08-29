@@ -3,7 +3,7 @@ requests
 plotly
 pandas
 numpy
-pyspark
 datatime
 pydeck
 os
+pyspark
