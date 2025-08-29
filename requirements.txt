@@ -8,4 +8,3 @@ numpy==2.3.2
 plotly==6.3.0
 pydeck==0.8.0
 
-pyspark==4.0.0
