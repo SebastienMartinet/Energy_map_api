@@ -190,7 +190,156 @@ def dashboard_energy_map():
 
 
 def dashboard_finance():
-    st.write("Finance dashboard placeholder")
+    import streamlit as st
+    import yfinance as yf
+    import pandas as pd
+    import plotly.express as px
+    from prophet import Prophet
+
+    # ---------------------------
+    # Available tickers
+    tickers = {
+        "Commodities": {
+            "Wheat": "ZW=F",
+            "Corn": "ZC=F",
+            "Soybeans": "ZS=F",
+            "Coffee": "KC=F",
+            "Rice": "ZR=F",
+            "Gold": "GC=F",
+            "Silver": "SI=F",
+            "Crude Oil": "CL=F",
+            "Natural Gas": "NG=F",
+        },
+        "Currencies": {
+            "USD/JPY": "JPY=X",
+            "GBP/USD": "GBPUSD=X",
+            "EUR/USD": "EURUSD=X",
+        },
+        "Indices": {
+            "S&P 500": "^GSPC",
+            "NASDAQ": "^IXIC",
+        }
+    }
+
+    st.set_page_config(page_title="Finance Dashboard", layout="wide")
+
+    # ---------------------------
+    # Sidebar selection
+    category = st.sidebar.selectbox("Select Category", list(tickers.keys()))
+    ticker_name = st.sidebar.selectbox("Select Ticker", list(tickers[category].keys()))
+    ticker = tickers[category][ticker_name]
+
+    # ---------------------------
+    st.title(f"Finance Dashboard — {ticker_name}")
+
+    # ---------------------------
+    # Fetch data
+    with st.spinner(f"Downloading {ticker_name} data..."):
+        data = yf.download(ticker, period="5y", interval="1d").reset_index()
+
+    # Flatten multi-index columns if needed
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = [f"{col[0]}_{col[1]}" if col[1] else col[0] for col in data.columns]
+
+    # Find the correct Close column
+    close_col = [col for col in data.columns if col.startswith("Close")][0]
+
+
+    # ---------------------------
+    # Prophet Forecast
+
+    # Prepare data for Prophet
+    df_prophet = data[["Date", close_col]].rename(columns={"Date": "ds", close_col: "y"})
+    df_prophet["y"] = pd.to_numeric(df_prophet["y"], errors="coerce")
+    df_prophet = df_prophet.dropna()
+
+    # Fit model
+    m = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=True,changepoint_prior_scale=0.01)  # smaller = smoother trend
+    m.fit(df_prophet)
+
+    # Make future dataframe
+
+    period_extrapolation = st.slider("", 1, 1000, 365)
+    st.subheader(f"Forecast with Prophet ({period_extrapolation} days)")
+
+    future = m.make_future_dataframe(periods=period_extrapolation,freq='d')
+    forecast = m.predict(future)
+
+    # Only future dates (after the last historical date)
+    last_date = df_prophet["ds"].iloc[-3]
+    # st.write(df_prophet["ds"].iloc[-2:])
+    forecast_future = forecast[forecast["ds"] > last_date]
+    forecast_future["yhat_upper"].iloc[0] = forecast_future["ds"].iloc[0]
+    forecast_future["yhat_lower"].iloc[0] = forecast_future["ds"].iloc[0]
+
+    # Plot historical + forecast
+    import plotly.graph_objects as go
+
+    fig_forecast = go.Figure()
+
+    # Historical prices
+    fig_forecast.add_trace(go.Scatter(
+        x=df_prophet["ds"], y=df_prophet["y"],
+        mode="lines", name="Historical",
+        # line=dict(color="steelblue")
+    ))
+
+    # Forecasted prices
+    fig_forecast.add_trace(go.Scatter(
+        x=forecast_future["ds"], y=forecast_future["yhat"],
+        mode="lines", name="Forecast",
+        line=dict(color="lightcoral", dash="dash"),
+
+    ))
+
+    # Forecast uncertainty band
+    fig_forecast.add_trace(go.Scatter(
+        x=forecast_future["ds"], y=forecast_future["yhat_upper"],
+        mode="lines", name="Upper", line=dict(color="lightcoral"), showlegend=False
+    ))
+    fig_forecast.add_trace(go.Scatter(
+        x=forecast_future["ds"], y=forecast_future["yhat_lower"],
+        mode="lines", name="Lower", line=dict(color="lightcoral"), fill="tonexty", fillcolor="rgba(255,0,0,0.2)",
+        showlegend=False
+    ))
+
+    fig_forecast.update_layout(
+        title=f"{ticker_name} Forecast (Prophet)",
+        xaxis_title="Date",
+        yaxis_title="Price"
+    )
+
+    st.plotly_chart(fig_forecast, use_container_width=True)
+
+    # ---------------------------
+    # Show raw data if needed
+    with st.expander("Show Raw Data"):
+        st.dataframe(data)
+
+    # # ---------------------------
+    # # Price chart
+    # st.subheader("Historical Prices")
+    # fig_price = px.line(
+    #     data,
+    #     x="Date",
+    #     y=close_col,
+    #     title=f"{ticker_name} Closing Prices",
+    #     labels={close_col: "Price", "Date": "Date"}
+    # )
+    # st.plotly_chart(fig_price, use_container_width=True)
+
+    # ---------------------------
+    # Volume chart
+    volume_col = [col for col in data.columns if col.startswith("Volume")][0]
+    st.subheader("Trading Volume")
+    fig_volume = px.bar(
+        data,
+        x="Date",
+        y=volume_col,
+        title=f"{ticker_name} Volume",
+        labels={volume_col: "Volume", "Date": "Date"}
+    )
+    st.plotly_chart(fig_volume, use_container_width=True)
 
 
 # ---- SIDEBAR ----
