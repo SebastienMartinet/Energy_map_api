@@ -1,0 +1,9 @@
+streamlit
+resquests
+plotly
+pandas
+numpy
+pyspark
+datatime
+pydeck
+os
