@@ -18,7 +18,7 @@ def dashboard_energy_map():
         # ---- CONFIG ----
         st.set_page_config(page_title="Italy Energy Dashboard", layout="wide")
         import os
-        API_TOKEN = os.environ["MY_API_KEY"]
+        API_TOKEN = os.environ["ELECTRICITYMAPS_TOKEN"]
         # API_TOKEN = st.secrets["ELECTRICITYMAPS_TOKEN"]
         ZONE = "IT"  # Italy
         headers = {"auth-token": API_TOKEN}
