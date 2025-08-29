@@ -10,3 +10,4 @@ pydeck==0.8.0
 
 yfinance
 prophet
+PIL
