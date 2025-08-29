@@ -222,7 +222,6 @@ def dashboard_finance():
     }
 
     st.set_page_config(page_title="Finance Dashboard", layout="wide")
-
     # ---------------------------
     # Sidebar selection
     category = st.sidebar.selectbox("Select Category", list(tickers.keys()))
@@ -328,6 +327,50 @@ def dashboard_finance():
     # )
     # st.plotly_chart(fig_price, use_container_width=True)
 
+
+    # ---------------------------
+    # Additional analysis
+
+    st.subheader("Moving Average & Rolling Volatility")
+
+    # User-adjustable window
+    ma_window = st.slider("MA / Volatility Window (days)", 1, 100, 30)
+
+    data['MA'] = data[close_col].rolling(ma_window).mean()
+    data['Volatility'] = data[close_col].rolling(ma_window).std()
+
+    # ---------------------------
+    # Simple anomaly detection: +/- n std
+    st.subheader("Anomaly Detection")
+
+    anomaly_std = st.slider("Anomaly Threshold (std)", 1.0, 5.0, 2.5)
+    data['Z_score'] = (data[close_col] - data['MA']) / data['Volatility']
+    data['Anomaly'] = data['Z_score'].abs() > anomaly_std
+
+    fig_anomaly = go.Figure()
+    fig_anomaly.add_trace(go.Scatter(x=data["Date"], y=data[close_col], mode="lines", name="Close"))
+    fig_anomaly.add_trace(go.Scatter(
+        x=data.loc[data['Anomaly'], "Date"],
+        y=data.loc[data['Anomaly'], close_col],
+        mode="markers", name="Anomaly", marker=dict(color="red", size=8)
+    ))
+    fig_anomaly.add_trace(go.Scatter(x=data["Date"], y=data['MA'], mode="lines", name=f"{ma_window}-day MA", line=dict(color="orange")))
+
+    fig_anomaly.update_layout(title=f"{ticker_name} Anomalies (±{anomaly_std}σ)", xaxis_title="Date", yaxis_title="Price")
+    st.plotly_chart(fig_anomaly, use_container_width=True)
+
+    # # Price + MA
+    # fig_ma = go.Figure()
+    # fig_ma.add_trace(go.Scatter(x=data["Date"], y=data[close_col], mode="lines", name="Close"))
+    # fig_ma.add_trace(go.Scatter(x=data["Date"], y=data['MA'], mode="lines", name=f"{ma_window}-day MA", line=dict(color="orange")))
+
+    # fig_ma.update_layout(title=f"{ticker_name} Price & Moving Average", xaxis_title="Date", yaxis_title="Price")
+    # st.plotly_chart(fig_ma, use_container_width=True)
+
+    # Volatility
+    fig_vol = px.line(data, x="Date", y="Volatility", title=f"{ticker_name} Rolling Volatility ({ma_window}-day)")
+    st.plotly_chart(fig_vol, use_container_width=True)
+
     # ---------------------------
     # Volume chart
     volume_col = [col for col in data.columns if col.startswith("Volume")][0]
@@ -342,7 +385,16 @@ def dashboard_finance():
     st.plotly_chart(fig_volume, use_container_width=True)
 
 
+
+
 # ---- SIDEBAR ----
+
+from PIL import Image
+# Load image
+image = Image.open("assets/avatar_open_to_work.png")  # local file or you can use a URL with requests
+# Display in sidebar
+st.sidebar.image(image, caption="Sébastien MARTINET", use_container_width=True)
+
 choice = st.sidebar.selectbox("Select Dashboard", ["Italian Energy Production", "Finance forecast"], index=0)
 
 if choice == "Italian Energy Production":
