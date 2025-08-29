@@ -1,5 +1,5 @@
 streamlit
-resquests
+requests
 plotly
 pandas
 numpy
